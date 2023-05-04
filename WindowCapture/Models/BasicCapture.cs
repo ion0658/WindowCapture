@@ -1,26 +1,18 @@
 ﻿using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
 using System.IO;
+using System.Windows.Controls;
 using WindowCapture.Helpers;
 using Windows.Graphics;
 using Windows.Graphics.Capture;
 using Windows.Graphics.DirectX;
 using Windows.Graphics.DirectX.Direct3D11;
+using Windows.Media.Core;
 using Windows.Security.Cryptography;
 using Windows.Storage.Streams;
 using Windows.UI.Composition;
 
 namespace WindowCapture.Models {
-
-    public sealed class SurfaceWithInfo {
-        public IDirect3DSurface? Surface { get; internal set; }
-        public TimeSpan SystemRelativeTime { get; internal set; }
-    }
-
-    public sealed class AudioWithInfo {
-        public IBuffer? buff { get; internal set; }
-        public TimeSpan SystemRelativeTime { get; internal set; }
-    }
 
     internal class BasicCapture : IDisposable {
         private const int BUFFER_COUNT = 2;
@@ -42,13 +34,12 @@ namespace WindowCapture.Models {
 
         private SizeInt32 lastSize;
         private readonly IDirect3DDevice device;
-        private readonly SharpDX.Direct3D11.Device d3dDevice_encode;
-        private readonly SharpDX.Direct3D11.Device d3dDevice_preview;
+        private readonly SharpDX.Direct3D11.Device d3dDevice;
         private readonly SharpDX.DXGI.SwapChain1 swapChain;
         private WasapiLoopbackCapture loopbackCapture = new();
 
-        private readonly Queue<SurfaceWithInfo> surfaces = new();
-        private readonly Queue<AudioWithInfo> pcms = new();
+        private readonly Queue<MediaStreamSample> surfaces = new();
+        private readonly Queue<MediaStreamSample> pcms = new();
         private DateTime _startTime = DateTime.Now;
 
         public BasicCapture(IDirect3DDevice d, GraphicsCaptureItem i, uint sampleRate, uint bitsPerSample) {
@@ -58,9 +49,7 @@ namespace WindowCapture.Models {
             _wait_audio_events = new[] { _closedEvent, _audioEvent };
             item = i;
             device = d;
-            d3dDevice_encode = Direct3D11Helper.CreateSharpDXDevice(device);
-            d3dDevice_preview = Direct3D11Helper.CreateSharpDXDevice(device);
-
+            d3dDevice = Direct3D11Helper.CreateSharpDXDevice(device);
 
             swapChain = InitSwapChain();
 
@@ -82,8 +71,7 @@ namespace WindowCapture.Models {
             session.Dispose();
             framePool.Dispose();
             swapChain.Dispose();
-            d3dDevice_encode.Dispose();
-            d3dDevice_preview.Dispose();
+            d3dDevice.Dispose();
         }
 
         public void StartCapture() {
@@ -133,11 +121,8 @@ namespace WindowCapture.Models {
             return stream.ToArray();
         }
         private void OnDataArrived(object? sender, WaveInEventArgs a) {
-            var info = new AudioWithInfo {
-                buff = CryptographicBuffer.CreateFromByteArray(ToPCM(a.Buffer, a.BytesRecorded, loopbackCapture.WaveFormat)),
-                SystemRelativeTime = DateTime.Now - _startTime
-            };
-            pcms.Enqueue(info);
+            var buff = CryptographicBuffer.CreateFromByteArray(ToPCM(a.Buffer, a.BytesRecorded, loopbackCapture.WaveFormat));
+            pcms.Enqueue(MediaStreamSample.CreateFromBuffer(buff, DateTime.Now - _startTime));
             _audioEvent.Set();
         }
 
@@ -147,52 +132,49 @@ namespace WindowCapture.Models {
                 return;
             }
             SetSurface(frame);
-            SetPreview(frame);
+            SetPreview(frame.Surface);
         }
 
         private void SetSurface(Direct3D11CaptureFrame frame) {
             using var bitmap = Direct3D11Helper.CreateSharpDXTexture2D(frame.Surface);
-            var result = new SurfaceWithInfo {
-                SystemRelativeTime = frame.SystemRelativeTime
-            };
             var description = bitmap.Description;
             description.Usage = SharpDX.Direct3D11.ResourceUsage.Default;
             description.BindFlags = SharpDX.Direct3D11.BindFlags.ShaderResource | SharpDX.Direct3D11.BindFlags.RenderTarget;
             description.CpuAccessFlags = SharpDX.Direct3D11.CpuAccessFlags.None;
             description.OptionFlags = SharpDX.Direct3D11.ResourceOptionFlags.None;
 
-            using var copyTexture = new SharpDX.Direct3D11.Texture2D(d3dDevice_encode, description);
+            using var copyTexture = new SharpDX.Direct3D11.Texture2D(d3dDevice, description);
             var width = Math.Clamp(frame.ContentSize.Width, 0, frame.Surface.Description.Width);
             var height = Math.Clamp(frame.ContentSize.Height, 0, frame.Surface.Description.Height);
 
             var region = new SharpDX.Direct3D11.ResourceRegion(0, 0, 0, width, height, 1);
-            d3dDevice_encode?.ImmediateContext.CopyResource(_blankTexture, copyTexture);
-            d3dDevice_encode?.ImmediateContext.CopySubresourceRegion(bitmap, 0, region, copyTexture, 0);
-            result.Surface = Direct3D11Helper.CreateDirect3DSurfaceFromSharpDXTexture(copyTexture);
-            surfaces.Enqueue(result);
+            d3dDevice?.ImmediateContext.CopyResource(_blankTexture, copyTexture);
+            d3dDevice?.ImmediateContext.CopySubresourceRegion(bitmap, 0, region, copyTexture, 0);
+            var surface = Direct3D11Helper.CreateDirect3DSurfaceFromSharpDXTexture(copyTexture);
+            surfaces.Enqueue(MediaStreamSample.CreateFromDirect3D11Surface(surface, frame.SystemRelativeTime));
             _frameEvent.Set();
         }
 
-        public void SetPreview(Direct3D11CaptureFrame frame) {
+        public void SetPreview(IDirect3DSurface surface) {
             var newSize = false;
-            if (frame.ContentSize.Width != lastSize.Width ||
-               frame.ContentSize.Height != lastSize.Height) {
+            if (surface.Description.Width != lastSize.Width ||
+               surface.Description.Height != lastSize.Height) {
                 // The thing we have been capturing has changed size.
                 // We need to resize the swap chain first, then blit the pixels.
                 // After we do that, retire the frame and then recreate the frame pool.
                 newSize = true;
-                lastSize = frame.ContentSize;
+                lastSize = new SizeInt32 { Width = surface.Description.Width, Height = surface.Description.Height };
                 swapChain.ResizeBuffers(
                     BUFFER_COUNT,
                     lastSize.Width,
                     lastSize.Height,
                     SDX_PIX_FMT,
-                     SharpDX.DXGI.SwapChainFlags.HwProtected);
+                    SharpDX.DXGI.SwapChainFlags.None);
             }
 
-            using var bitmap = Direct3D11Helper.CreateSharpDXTexture2D(frame.Surface);
+            using var bitmap = Direct3D11Helper.CreateSharpDXTexture2D(surface);
             using var backBuffer = swapChain.GetBackBuffer<SharpDX.Direct3D11.Texture2D>(0);
-            d3dDevice_preview?.ImmediateContext.CopyResource(bitmap, backBuffer);
+            d3dDevice?.ImmediateContext.CopyResource(bitmap, backBuffer);
             swapChain.Present(0, SharpDX.DXGI.PresentFlags.None);
             if (newSize) {
                 framePool.Recreate(
@@ -219,10 +201,10 @@ namespace WindowCapture.Models {
                 CpuAccessFlags = SharpDX.Direct3D11.CpuAccessFlags.None,
                 OptionFlags = SharpDX.Direct3D11.ResourceOptionFlags.None
             };
-            var texture = new SharpDX.Direct3D11.Texture2D(d3dDevice_encode, description);
+            var texture = new SharpDX.Direct3D11.Texture2D(d3dDevice, description);
 
-            using var renderTargetView = new SharpDX.Direct3D11.RenderTargetView(d3dDevice_encode, texture);
-            d3dDevice_encode?.ImmediateContext.ClearRenderTargetView(renderTargetView, new SharpDX.Mathematics.Interop.RawColor4(0, 0, 0, 1));
+            using var renderTargetView = new SharpDX.Direct3D11.RenderTargetView(d3dDevice, texture);
+            d3dDevice?.ImmediateContext.ClearRenderTargetView(renderTargetView, new SharpDX.Mathematics.Interop.RawColor4(0, 0, 0, 1));
             return texture;
         }
 
@@ -244,10 +226,10 @@ namespace WindowCapture.Models {
                 AlphaMode = SharpDX.DXGI.AlphaMode.Premultiplied,
                 Flags = SharpDX.DXGI.SwapChainFlags.None
             };
-            return new SharpDX.DXGI.SwapChain1(dxgiFactory, d3dDevice_preview, ref description);
+            return new SharpDX.DXGI.SwapChain1(dxgiFactory, d3dDevice, ref description);
         }
 
-        public SurfaceWithInfo? WaitForNewFrame() {
+        public MediaStreamSample? WaitForNewFrame() {
             if (surfaces.Count == 0) {
                 _frameEvent.Reset();
                 var signaledEvent = _wait_frame_events[WaitHandle.WaitAny(_wait_frame_events)];
@@ -260,7 +242,7 @@ namespace WindowCapture.Models {
             return surface;
         }
 
-        public AudioWithInfo? WaitForNewPcm() {
+        public MediaStreamSample? WaitForNewPcm() {
             if (pcms.Count == 0) {
                 _audioEvent.Reset();
                 var signaledEvent = _wait_audio_events[WaitHandle.WaitAny(_wait_audio_events)];

@@ -29,7 +29,7 @@ namespace WindowCapture.ViewModels {
         [NotifyPropertyChangedFor(nameof(EnableProcSelector))]
         private bool _recording = false;
         [ObservableProperty]
-        private TargetProcs _selectedProc = TargetProcs.Explorer;
+        private TargetProcs _selectedProc = TargetProcs.Firefox;
         [ObservableProperty]
         private string _saveFolderName = Environment.GetFolderPath(Environment.SpecialFolder.MyVideos);
 

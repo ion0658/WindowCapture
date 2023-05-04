@@ -55,8 +55,7 @@ namespace WindowCapture.Models {
                             DisposeInternal();
                             return;
                         }
-                        var sample = MediaStreamSample.CreateFromDirect3D11Surface(frame.Surface, frame.SystemRelativeTime);
-                        args.Request.Sample = sample;
+                        args.Request.Sample = frame;
                     } else if (args.Request.StreamDescriptor.Name.Equals("audio")) {
                         var frame = _capture.WaitForNewPcm();
                         if (frame == null) {
@@ -65,8 +64,7 @@ namespace WindowCapture.Models {
                             DisposeInternal();
                             return;
                         }
-                        var sample = MediaStreamSample.CreateFromBuffer(frame.buff, frame.SystemRelativeTime);
-                        args.Request.Sample = sample;
+                        args.Request.Sample = frame;
                     } else {
                         Debug.WriteLine("other request");
                         args.Request.Sample = null;
@@ -86,13 +84,14 @@ namespace WindowCapture.Models {
             }
         }
 
+
         private void OnMediaStreamSourceStarting(MediaStreamSource sender, MediaStreamSourceStartingEventArgs args) {
             var frame = _capture.WaitForNewFrame();
             if (frame == null) {
                 DisposeInternal();
                 return;
             }
-            args.Request.SetActualStartPosition(frame.SystemRelativeTime);
+            args.Request.SetActualStartPosition(frame.Timestamp);
         }
 
         public IAsyncAction EncodeAsync(IRandomAccessStream stream, MediaEncodingProfile encodingProfile) {
