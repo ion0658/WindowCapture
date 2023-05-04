@@ -13,12 +13,12 @@ namespace WindowCapture.ViewModels {
 
     [TypeConverter(typeof(EnumDescriptionTypeConverter))]
     public enum TargetProcs {
+        [Description("League of Legends")]
+        League_Of_Legends,
         [Description("Explorer")]
         Explorer,
         [Description("Firefox")]
         Firefox,
-        [Description("League of Legends")]
-        League_Of_Legends,
     }
 
     internal partial class MainWindowViewModel : ObservableObject, IDisposable {
@@ -29,7 +29,7 @@ namespace WindowCapture.ViewModels {
         [NotifyPropertyChangedFor(nameof(EnableProcSelector))]
         private bool _recording = false;
         [ObservableProperty]
-        private TargetProcs _selectedProc = TargetProcs.Firefox;
+        private TargetProcs _selectedProc = TargetProcs.League_Of_Legends;
         [ObservableProperty]
         private string _saveFolderName = Environment.GetFolderPath(Environment.SpecialFolder.MyVideos);
 
@@ -95,16 +95,19 @@ namespace WindowCapture.ViewModels {
                 if (sample != null && item != null) {
                     Recording = true;
                     await sample.StartCaptureFromItem(item, SaveFolderName, GetProcName(SelectedProc));
-                    item.Closed += (self, e) => { StopButton(); };
+                    item.Closed += (self, e) => {
+                        Debug.WriteLine("Application Closed");
+                        AutoRecordChanged();
+                    };
                 }
             });
         }
 
         private static string GetProcName(TargetProcs proc) {
             return proc switch {
+                TargetProcs.League_Of_Legends => "League of Legends",
                 TargetProcs.Explorer => "explorer",
                 TargetProcs.Firefox => "firefox",
-                TargetProcs.League_Of_Legends => "League of Legends",
                 _ => throw new NotImplementedException()
             };
         }
@@ -112,6 +115,7 @@ namespace WindowCapture.ViewModels {
         [RelayCommand]
         public void StopButton() {
             Application.Current.Dispatcher.Invoke(() => {
+                Debug.WriteLine("Stop Button");
                 sample?.StopCapture();
                 Recording = false;
             });

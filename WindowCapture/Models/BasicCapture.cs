@@ -1,7 +1,6 @@
 ﻿using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
 using System.IO;
-using System.Windows.Controls;
 using WindowCapture.Helpers;
 using Windows.Graphics;
 using Windows.Graphics.Capture;
@@ -9,7 +8,6 @@ using Windows.Graphics.DirectX;
 using Windows.Graphics.DirectX.Direct3D11;
 using Windows.Media.Core;
 using Windows.Security.Cryptography;
-using Windows.Storage.Streams;
 using Windows.UI.Composition;
 
 namespace WindowCapture.Models {

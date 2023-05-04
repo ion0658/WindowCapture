@@ -42,7 +42,6 @@ namespace WindowCapture.Models {
             };
         }
 
-
         private void OnMediaStreamSourceSampleRequested(MediaStreamSource sender, MediaStreamSourceSampleRequestedEventArgs args) {
             if (_isRecording && !_closed) {
 
@@ -103,6 +102,7 @@ namespace WindowCapture.Models {
                 _isRecording = true;
                 Debug.WriteLine($"bitrate:{encodingProfile.Video.Bitrate}, framerate: {encodingProfile.Video.FrameRate}, size: {encodingProfile.Video.Width}x{encodingProfile.Video.Height}");
                 Debug.WriteLine($"AudioSubtype:{encodingProfile.Audio.Subtype}, BitsPerSample: {encodingProfile.Audio.BitsPerSample}");
+                encodingProfile.Video.Bitrate = 20_000_000;
                 encodingProfile.Video.FrameRate.Numerator = 60;
                 encodingProfile.Video.FrameRate.Denominator = 1;
                 var transcode = await _transcoder.PrepareMediaStreamSourceTranscodeAsync(_mediaStreamSource, stream, encodingProfile);

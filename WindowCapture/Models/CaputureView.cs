@@ -72,7 +72,7 @@ namespace WindowCapture.Models {
 
                 var file = await GetTempFileAsync(folder_path, proc_name);
                 using var stream = await file.OpenAsync(FileAccessMode.ReadWrite);
-                await encoder.EncodeAsync(stream, MediaEncodingProfile.CreateMp4(v_quality));
+                await encoder.EncodeAsync(stream, MediaEncodingProfile.CreateHevc(v_quality));
 
             } catch (Exception ex) {
                 Debug.WriteLine($"{ex.Message}\n {ex.StackTrace}");
@@ -92,6 +92,7 @@ namespace WindowCapture.Models {
 
         public void StopCapture() {
             capture?.StopCapture();
+            encoder?.Dispose();
             brush.Surface = null;
         }
     }
