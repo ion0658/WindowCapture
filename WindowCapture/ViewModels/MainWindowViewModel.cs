@@ -22,7 +22,7 @@ namespace WindowCapture.ViewModels {
     }
 
     internal partial class MainWindowViewModel : ObservableObject, IDisposable {
-        private const int POOLING_DUR_MSEC = 1_000;
+        private const int POOLING_DUR_MSEC = 5_000;
         [ObservableProperty]
         private bool _isAutoRecording = false;
         [ObservableProperty]
@@ -104,7 +104,7 @@ namespace WindowCapture.ViewModels {
             return proc switch {
                 TargetProcs.Explorer => "explorer",
                 TargetProcs.Firefox => "firefox",
-                TargetProcs.League_Of_Legends => "leagueoflegends",
+                TargetProcs.League_Of_Legends => "League of Legends",
                 _ => throw new NotImplementedException()
             };
         }
