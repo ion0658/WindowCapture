@@ -7,6 +7,7 @@ using System.Windows;
 using WindowCapture.Helpers;
 using WindowCapture.Models;
 using Windows.Foundation.Metadata;
+using Windows.Graphics.Capture;
 using Windows.UI.Composition;
 
 namespace WindowCapture.ViewModels {
@@ -15,10 +16,6 @@ namespace WindowCapture.ViewModels {
     public enum TargetProcs {
         [Description("League of Legends")]
         League_Of_Legends,
-        [Description("Explorer")]
-        Explorer,
-        [Description("Firefox")]
-        Firefox,
     }
 
     internal partial class MainWindowViewModel : ObservableObject, IDisposable {
@@ -40,6 +37,7 @@ namespace WindowCapture.ViewModels {
         private Compositor? compositor;
         private CompositionTarget? target;
         private ContainerVisual? root;
+        private GraphicsCaptureItem? item;
 
         public void InitComposition(IntPtr hwnd, float controlWidth) {
             compositor = new Compositor();
@@ -90,15 +88,15 @@ namespace WindowCapture.ViewModels {
         private void StartHwndCapture(Process proc) {
             Application.Current.Dispatcher.Invoke(async () => {
                 var hwnd = proc.MainWindowHandle;
-                var item = CaptureHelper.CreateItemForWindow(hwnd);
+                item = CaptureHelper.CreateItemForWindow(hwnd);
                 Debug.WriteLine($"Proc: {proc.ProcessName}");
                 if (sample != null && item != null) {
                     Recording = true;
-                    await sample.StartCaptureFromItem(item, SaveFolderName, GetProcName(SelectedProc));
-                    item.Closed += (self, e) => {
-                        Debug.WriteLine("Application Closed");
+                    item.Closed += (s, e) => {
+                        Debug.WriteLine("aaa");
                         AutoRecordChanged();
                     };
+                    await sample.StartCaptureFromItem(item, SaveFolderName, GetProcName(SelectedProc));
                 }
             });
         }
@@ -106,8 +104,6 @@ namespace WindowCapture.ViewModels {
         private static string GetProcName(TargetProcs proc) {
             return proc switch {
                 TargetProcs.League_Of_Legends => "League of Legends",
-                TargetProcs.Explorer => "explorer",
-                TargetProcs.Firefox => "firefox",
                 _ => throw new NotImplementedException()
             };
         }
@@ -117,6 +113,7 @@ namespace WindowCapture.ViewModels {
             Application.Current.Dispatcher.Invoke(() => {
                 Debug.WriteLine("Stop Button");
                 sample?.StopCapture();
+                item = null;
                 Recording = false;
             });
         }

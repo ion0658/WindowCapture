@@ -51,11 +51,8 @@ namespace WindowCapture.Models {
 
             swapChain = InitSwapChain();
 
-            framePool = Direct3D11CaptureFramePool.CreateFreeThreaded(
-            device,
-            DX_PIX_FMT,
-            BUFFER_COUNT,
-            i.Size);
+            framePool = Direct3D11CaptureFramePool.CreateFreeThreaded(device, DX_PIX_FMT, BUFFER_COUNT, i.Size);
+            //framePool = Direct3D11CaptureFramePool.Create(device, DX_PIX_FMT, BUFFER_COUNT, i.Size);
 
             session = framePool.CreateCaptureSession(i);
             framePool.FrameArrived += OnFrameArrived;
