@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.33627.172
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WindowCapture", "WindowCapture\WindowCapture.csproj", "{0F47D080-F1ED-418E-B31A-08EA4354850C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{0F47D080-F1ED-418E-B31A-08EA4354850C}.Debug|x64.ActiveCfg = Debug|x64
+		{0F47D080-F1ED-418E-B31A-08EA4354850C}.Debug|x64.Build.0 = Debug|x64
+		{0F47D080-F1ED-418E-B31A-08EA4354850C}.Release|x64.ActiveCfg = Release|x64
+		{0F47D080-F1ED-418E-B31A-08EA4354850C}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {C11C3DE6-FC0D-4B07-9DD7-C2AF5B85EE4C}
+	EndGlobalSection
+EndGlobal
