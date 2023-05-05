@@ -39,10 +39,11 @@
                 <TextBox IsEnabled="False"
                          Margin="10 0 10 0"
                          Background="WhiteSmoke"
-                         Text="{Binding SaveFolderName}" />
+                         Text="{Binding SaveFolderName, Mode=OneWay}" />
                 <Button Content="Change" 
                         Margin="10 5 10 10"
-                        Command="{Binding ChangeSaveDirCommand}"/>
+                        Command="{Binding ChangeSaveDirCommand}"
+                        IsEnabled="{Binding EnableProcSelector}" />
             </StackPanel>
             <Button x:Name="StopButton"
                     Grid.Row="1"

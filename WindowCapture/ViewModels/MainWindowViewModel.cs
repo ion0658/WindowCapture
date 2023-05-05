@@ -20,6 +20,9 @@ namespace WindowCapture.ViewModels {
 
     internal partial class MainWindowViewModel : ObservableObject, IDisposable {
         private const int POOLING_DUR_MSEC = 5_000;
+
+        private SettingStore _settingStore = SettingStore.Instance;
+
         [ObservableProperty]
         private bool _isAutoRecording = false;
         [ObservableProperty]
@@ -27,8 +30,8 @@ namespace WindowCapture.ViewModels {
         private bool _recording = false;
         [ObservableProperty]
         private TargetProcs _selectedProc = TargetProcs.League_Of_Legends;
-        [ObservableProperty]
-        private string _saveFolderName = Environment.GetFolderPath(Environment.SpecialFolder.MyVideos);
+
+        public string SaveFolderName { get => _settingStore.GetVideoPath(); }
 
         public bool EnableProcSelector => !Recording;
 
@@ -126,14 +129,15 @@ namespace WindowCapture.ViewModels {
         }
 
         [RelayCommand]
-        public void ChangeSaveDir() {
+        public async void ChangeSaveDir() {
             var browser = new FolderBrowserDialog {
                 Title = "Select Save Folder",
                 SelectedPath = SaveFolderName
             };
             var result = browser.ShowDialog(IntPtr.Zero);
             if (result == DialogResult.OK) {
-                SaveFolderName = browser.SelectedPath;
+                await _settingStore.SaveVideoPathAsync(browser.SelectedPath);
+                OnPropertyChanged(nameof(SaveFolderName));
             }
         }
 
